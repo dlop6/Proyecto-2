@@ -1,3 +1,10 @@
+-- Elimina tablas si existen (para desarrollo)
+DROP TABLE IF EXISTS reservas CASCADE;
+DROP TABLE IF EXISTS asientos CASCADE;
+DROP TABLE IF EXISTS usuarios CASCADE;
+DROP TABLE IF EXISTS eventos CASCADE;
+
+
 -- Tabla de eventos
 CREATE TABLE eventos (
     id_evento SERIAL PRIMARY KEY,

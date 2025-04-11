@@ -1,0 +1,26 @@
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: db  # Nombre fijo para referencia
+    environment:
+      POSTGRES_USER: proyecto_user
+      POSTGRES_PASSWORD: proyecto_pass
+      POSTGRES_DB: reservas_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./sql:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U proyecto_user -d reservas_db || exit 0"]  # Healthcheck más tolerante
+      interval: 15s
+      timeout: 15s
+      retries: 15
+    restart: unless-stopped  # Reinicio automático
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  postgres_data:
