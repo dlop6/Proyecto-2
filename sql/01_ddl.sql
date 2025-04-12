@@ -1,4 +1,4 @@
--- Elimina tablas si existen (para desarrollo)
+-- Elimina tablas si existen para evitar conflictos al crear nuevas tablas
 DROP TABLE IF EXISTS reservas CASCADE;
 DROP TABLE IF EXISTS asientos CASCADE;
 DROP TABLE IF EXISTS usuarios CASCADE;
