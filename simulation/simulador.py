@@ -154,7 +154,7 @@ def menu_principal():
     )
     
     # Guardar resultados en un archivo
-    with open("resultados.csv", "a") as f:
+    with open("results/resultados.csv", "a") as f:
         f.write(f"{event_id},{nivel},{num_usuarios},{resultados['reservas_exitosas']},{resultados['reservas_fallidas']},{resultados['errores']},{resultados['bloqueos']},{resultados['tiempo_promedio']:.2f}\n")
     
     print("\nSimulación completada. Resultados guardados en 'resultados_simulacion.csv'")

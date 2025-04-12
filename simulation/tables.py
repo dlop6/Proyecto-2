@@ -1,7 +1,7 @@
 import pandas as pd
 
 # Leer el archivo resultados.csv
-file_path = 'resultados.csv'
+file_path = 'results/resultados.csv'
 columns = [
     "event_id", "nivel", "num_usuarios", "reservas_exitosas",
     "reservas_fallidas", "errores", "bloqueos", "tiempo_promedio"
