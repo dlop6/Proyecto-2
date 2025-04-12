@@ -1,66 +1,163 @@
 import threading
-import time
-from psycopg2 import extensions
-from db_utils import DButils
 import random
+import time
+import psycopg2
+from psycopg2.extensions import ISOLATION_LEVEL_READ_COMMITTED, ISOLATION_LEVEL_REPEATABLE_READ, ISOLATION_LEVEL_SERIALIZABLE
+from db_utils import DButils  # Asumiendo que tu archivo se llama db_utils.py
 
-NUM_USUARIOS = 10
-EVENTO_ID = 3
-NIVEL_AISLAMIENTO = extensions.ISOLATION_LEVEL_SERIALIZABLE
+class SimuladorReservas:
+    def __init__(self):
+        self.db = DButils()
+        self.resultados = {
+            "exitosas": 0,
+            "fallidas": 0,
+            "errores": 0,
+            "bloqueos": 0
+        }
+        self.lock = threading.Lock()
 
-resultados = {
-    "exitosas": 0,
-    "fallidas": 0,
-    "tiempos": []
+    def simular_reserva(self, user_id, event_id, nivel_aislamiento=None):
+        try:
+            # Seleccionar un asiento disponible aleatorio
+            asientos_disponibles = self.db.get_asientos_disponibles(event_id)
+            
+            if not asientos_disponibles:
+                with self.lock:
+                    self.resultados["fallidas"] += 1
+                print(f"⚠️ Usuario {user_id} - No hay asientos disponibles")
+                return False
+                
+            asiento_id, numero_asiento = random.choice(asientos_disponibles)
+            
+            # Intentar reserva con el método concurrente
+            exito = self.db.reservar_asiento_concurrente(
+                user_id, 
+                event_id, 
+                numero_asiento,
+                nivel_aislamiento
+            )
+            
+            with self.lock:
+                if exito:
+                    self.resultados["exitosas"] += 1
+                    print(f"✅ Usuario {user_id} - Reserva exitosa para asiento {numero_asiento}")
+                else:
+                    self.resultados["fallidas"] += 1
+                    print(f"❌ Usuario {user_id} - No pudo reservar asiento {numero_asiento}")
+            
+            return exito
+            
+        except psycopg2.OperationalError as e:
+            if "could not obtain lock" in str(e):
+                with self.lock:
+                    self.resultados["bloqueos"] += 1
+                print(f"🔒 Usuario {user_id} - Asiento bloqueado, reintentando...")
+                return self.simular_reserva(user_id, event_id, nivel_aislamiento)
+            else:
+                with self.lock:
+                    self.resultados["errores"] += 1
+                print(f"🔴 Usuario {user_id} - Error: {str(e)}")
+                return False
+        except Exception as e:
+            with self.lock:
+                self.resultados["errores"] += 1
+            print(f"🔴 Usuario {user_id} - Error inesperado: {str(e)}")
+            return False
+
+    def ejecutar_simulacion(self, num_usuarios, event_id, nivel_aislamiento=None):
+        threads = []
+        self.resultados = {"exitosas": 0, "fallidas": 0, "errores": 0, "bloqueos": 0}
+        
+        inicio = time.time()
+        
+        print(f"\n🚀 Iniciando simulación con {num_usuarios} usuarios...")
+        print(f"🔧 Nivel de aislamiento: {nivel_aislamiento or 'Por defecto'}")
+        
+        for i in range(num_usuarios):
+            t = threading.Thread(
+                target=self.simular_reserva,
+                args=(i+1, event_id, nivel_aislamiento)
+            )
+            threads.append(t)
+            t.start()
+        
+        for t in threads:
+            t.join()
+        
+        tiempo_total = time.time() - inicio
+        tiempo_promedio = (tiempo_total * 1000) / num_usuarios
+        
+        print("\n📊 Resultados:")
+        print(f"Reservas exitosas: {self.resultados['exitosas']}")
+        print(f"Reservas fallidas: {self.resultados['fallidas']}")
+        print(f"Errores: {self.resultados['errores']}")
+        print(f"Bloqueos: {self.resultados['bloqueos']}")
+        print(f"Tiempo total: {tiempo_total:.2f} segundos")
+        print(f"Tiempo promedio por usuario: {tiempo_promedio:.2f} ms")
+        
+        return {
+            "reservas_exitosas": self.resultados["exitosas"],
+            "reservas_fallidas": self.resultados["fallidas"],
+            "errores": self.resultados["errores"],
+            "bloqueos": self.resultados["bloqueos"],
+            "tiempo_total": tiempo_total,
+            "tiempo_promedio": tiempo_promedio
+        }
+
+# Configuración de niveles de aislamiento
+NIVELES_AISLAMIENTO = {
+    "READ COMMITTED": ISOLATION_LEVEL_READ_COMMITTED,
+    "REPEATABLE READ": ISOLATION_LEVEL_REPEATABLE_READ,
+    "SERIALIZABLE": ISOLATION_LEVEL_SERIALIZABLE
 }
 
-lock = threading.Lock()
-
-def simular_reserva(usuario_id):
+def menu_principal():
+    print("\n🎭 Simulador de Reservas Concurrentes 🎭")
+    print("Basado en el sistema de gestión de base de datos DButils")
+    
     db = DButils()
-    asiento = random.randint(1, 10)
-
-    inicio = time.perf_counter()
-    try:
-        exito = db.reservar_asiento_concurrente(
-            usuario_id=usuario_id,
-            evento_id=EVENTO_ID,
-            numero_asiento=asiento,
-            nivel_aislamiento=NIVEL_AISLAMIENTO
-        )
-    except Exception as e:
-        print(f"[Error Usuario {usuario_id}] {str(e).splitlines()[0]}")
-        exito = False
-    fin = time.perf_counter()
-
-    tiempo = (fin - inicio) * 1000
-
-    with lock:
-        if exito:
-            resultados["exitosas"] += 1
-        else:
-            resultados["fallidas"] += 1
-        resultados["tiempos"].append(tiempo)
-
-def ejecutar_simulacion():
-    hilos = []
-    for i in range(NUM_USUARIOS):
-        hilo = threading.Thread(target=simular_reserva, args=(i + 1,))
-        hilos.append(hilo)
-        hilo.start()
-
-    for hilo in hilos:
-        hilo.join()
-
-    print("\n🧾 Resultados de la Simulación:")
-    print(f"Usuarios Concurrentes: {NUM_USUARIOS}")
-    print(f"Nivel de Aislamiento: {NIVEL_AISLAMIENTO}")
-    print(f"Reservas Exitosas: {resultados['exitosas']}")
-    print(f"Reservas Fallidas: {resultados['fallidas']}")
-    if resultados["tiempos"]:
-        print(f"Tiempo Promedio: {sum(resultados['tiempos']) / len(resultados['tiempos']):.2f} ms")
+    eventos = db.get_eventos()
+    
+    print("\n📅 Eventos disponibles:")
+    for evento in eventos:
+        print(f"{evento[0]}. {evento[1]} - {evento[2]} ({evento[3]})")
+    
+    event_id = int(input("\nSeleccione el ID del evento: "))
+    
+    print("\n🔒 Niveles de aislamiento disponibles:")
+    for i, nivel in enumerate(NIVELES_AISLAMIENTO.keys(), 1):
+        print(f"{i}. {nivel}")
+    
+    opcion = input("\nSeleccione nivel de aislamiento (1-3, Enter para predeterminado): ")
+    if opcion.isdigit() and 0 < int(opcion) <= 3:
+        nivel = list(NIVELES_AISLAMIENTO.keys())[int(opcion)-1]
+        nivel_aislamiento = NIVELES_AISLAMIENTO[nivel]
     else:
-        print("No se registraron tiempos de reserva (todas fallaron).")
+        nivel = "Por defecto"
+        nivel_aislamiento = None
+    
+    num_usuarios = int(input("\nNúmero de usuarios concurrentes (5-30): ") or "10")
+    num_usuarios = max(5, min(30, num_usuarios))
+    
+    print(f"\n🔧 Configuración final:")
+    print(f"Evento: {event_id}")
+    print(f"Nivel de aislamiento: {nivel}")
+    print(f"Usuarios concurrentes: {num_usuarios}")
+    
+    input("\nPresione Enter para comenzar la simulación...")
+    
+    simulador = SimuladorReservas()
+    resultados = simulador.ejecutar_simulacion(
+        num_usuarios, 
+        event_id,
+        nivel_aislamiento
+    )
+    
+    # Guardar resultados en un archivo
+    with open("resultados.csv", "a") as f:
+        f.write(f"{event_id},{nivel},{num_usuarios},{resultados['reservas_exitosas']},{resultados['reservas_fallidas']},{resultados['errores']},{resultados['bloqueos']},{resultados['tiempo_promedio']:.2f}\n")
+    
+    print("\n✅ Simulación completada. Resultados guardados en 'resultados_simulacion.csv'")
 
 if __name__ == "__main__":
-    ejecutar_simulacion()
+    menu_principal()
