@@ -1,117 +1,117 @@
-# 📌 Proyecto 2 - Simulador de Reservas Concurrentes
+# Simulador de Reservas Concurrentes
 
-**Sistema de simulación de reservas para eventos con manejo de concurrencia en PostgreSQL**
+## Descripción
+Este proyecto simula un sistema de reservas concurrentes para eventos, demostrando el manejo de transacciones en bases de datos con diferentes niveles de aislamiento. El sistema permite probar cómo se comportan múltiples usuarios intentando reservar los mismos asientos simultáneamente.
 
-## 📋 Descripción
-
-Este proyecto implementa un sistema de reservas de asientos para eventos que maneja operaciones concurrentes utilizando diferentes niveles de aislamiento de transacciones en PostgreSQL. El sistema permite simular múltiples usuarios intentando reservar asientos simultáneamente, midiendo el rendimiento y conflictos en distintos escenarios.
-
-## 🚀 Requisitos Previos
-
+## Requisitos previos
 - Docker y Docker Compose instalados
 - Python 3.8+
-- psycopg2-binary (se instala automáticamente)
-- PostgreSQL 13+
+- Dependencias de Python (instaladas con `pip install -r requirements.txt`)
 
-## 🛠 Instalación
+## Configuración inicial
 
-1. Clonar el repositorio:
+1. **Iniciar la base de datos PostgreSQL**:
+   ```bash
+   docker-compose up -d
+   ```
+
+2. **Verificar la conexión**:
+   ```bash
+   python db_utils.py
+   ```
+   Si hay errores, revisa que el contenedor esté corriendo con `docker ps`.
+
+## Cómo usar el simulador
+
+Ejecuta el programa principal:
 ```bash
-git clone https://github.com/dlop6/Proyecto-2
-cd proyecto-reservas-concurrentes
+python simulador.py
 ```
 
-2. Iniciar los servicios con Docker Compose:
-```bash
-docker-compose up -d
+El sistema mostrará un menú interactivo con las siguientes opciones:
+
+1. **Seleccionar evento**: Se muestran todos los eventos disponibles en la base de datos
+2. **Elegir nivel de aislamiento**:
+   - READ COMMITTED
+   - REPEATABLE READ
+   - SERIALIZABLE
+3. **Especificar número de usuarios concurrentes** (entre 5 y 30)
+
+## Funcionamiento del sistema
+
+El simulador realiza las siguientes acciones:
+
+1. Crea múltiples hilos (uno por usuario)
+2. Cada hilo intenta reservar un asiento aleatorio
+3. Registra los resultados de cada operación
+4. Genera un reporte con:
+   - Número de reservas exitosas/fallidas
+   - Errores encontrados
+   - Tiempos de ejecución
+   - Conflictos de bloqueo
+
+## Estructura del código
+
+### Archivos principales
+
+- `simulador.py`: Contiene la lógica de simulación y el menú interactivo
+- `db_utils.py`: Maneja todas las operaciones con la base de datos
+
+### Métodos clave
+
+En `simulador.py`:
+- `simular_reserva()`: Intenta reservar un asiento para un usuario
+- `ejecutar_simulacion()`: Coordina la ejecución concurrente
+
+En `db_utils.py`:
+- `reservar_asiento_concurrente()`: Implementa la reserva con bloqueos
+- `get_asientos_disponibles()`: Consulta asientos libres
+
+## Configuración de la base de datos
+
+El sistema espera una base de datos PostgreSQL con:
+- Tablas: eventos, asientos, reservas, usuarios
+- Usuario: proyecto_user
+- Contraseña: proyecto_pass
+- Puerto: 5433
+
+Estos parámetros pueden modificarse en el constructor de `DButils`.
+
+## Interpretación de resultados
+
+Los resultados se guardan en `results/resultados.csv` con el formato:
+```
+event_id,nivel,num_usuarios,reservas_exitosas,reservas_fallidas,errores,bloqueos,tiempo_promedio
 ```
 
-3. Instalar dependencias de Python:
-```bash
-pip install -r requirements.txt
-```
+## Solución de problemas
 
-## ⚙️ Configuración
+Si encuentras errores:
+1. Verifica que PostgreSQL esté corriendo
+2. Ejecuta `docker-compose down -v && docker-compose up -d` para reiniciar
+3. Revisa los logs con `docker-compose logs`
 
-El sistema viene preconfigurado con estos parámetros (editables en `docker-compose.yml` y `.env`):
-
-- **PostgreSQL**:
-  - Puerto: 5433
-  - Usuario: `proyecto_user`
-  - Contraseña: `proyecto_pass`
-  - Base de datos: `reservas_db`
-
-- **Simulación**:
-  - Niveles de aislamiento probados: READ COMMITTED, REPEATABLE READ, SERIALIZABLE
-  - Usuarios concurrentes: 5, 10, 20, 30
-
-## 🖥 Uso del Programa
-
-### Ejecutar todas las pruebas automáticamente
-```bash
-python simulation/simulador.py
-```
-
-### Ejecutar pruebas específicas
-```python
-from simulation.simulador import SimuladorReservas
-
-simulador = SimuladorReservas()
-
-# Prueba con 10 usuarios en REPEATABLE READ
-simulador.ejecutar_prueba(num_usuarios=10, nivel_aislamiento="REPEATABLE READ", evento_id=1)
-
-# Generar reporte final
-simulador.generar_reporte()
-```
-
-### Parámetros personalizables
-- `num_usuarios`: Cantidad de usuarios concurrentes (5, 10, 20, 30)
-- `nivel_aislamiento`: "READ COMMITTED", "REPEATABLE READ" o "SERIALIZABLE"
-- `evento_id`: ID del evento a simular (1-4 por defecto)
-
-## 📊 Resultados
-
-El programa genera:
-1. Logs detallados en `simulacion.log`
-2. Reporte final en consola con estadísticas
-3. Tabla comparativa de resultados
-
-Ejemplo de salida:
-```
-🔍 Resultados para SERIALIZABLE:
- - Reservas exitosas: 15
- - Reservas fallidas: 5 
- - Tasa de éxito: 75.00%
- - Tiempo promedio: 0.42 segundos
-```
-
-## 🧩 Estructura del Proyecto
+## Ejemplo de uso
 
 ```
-.
-├── docker-compose.yml
-├── sql/
-│   ├── 01_ddl.sql          # Esquema de la base de datos
-│   └── 02_data.sql         # Datos iniciales
-├── simulation/
-│   ├── simulador.py        # Lógica de simulación
-│   └── db_utils.py         # Utilidades de base de datos
-└── tests/                  # Pruebas unitarias
+$ python simulador.py
+
+Simulador de Reservas Concurrentes
+Eventos disponibles:
+1. Concierto UVG - 2025-05-15 (Auditorio UVG)
+2. Conferencia de Tecnología - 2025-06-20 (Salón de Conferencias)
+
+Seleccione el ID del evento: 1
+
+Niveles de aislamiento disponibles:
+1. READ COMMITTED
+2. REPEATABLE READ
+3. SERIALIZABLE
+
+Seleccione nivel de aislamiento (1-3): 2
+
+Número de usuarios concurrentes (5-30): 15
+
+Iniciando simulación con 15 usuarios...
+[Resultados detallados...]
 ```
-
-## 🛑 Detener el Sistema
-
-```bash
-docker-compose down
-```
-
-## 📝 Notas Adicionales
-
-- Los datos de prueba incluyen 4 eventos y 11 usuarios
-- Para reiniciar completamente la base de datos:
-  ```bash
-  docker-compose down -v
-  docker-compose up -d
-  ```
-
