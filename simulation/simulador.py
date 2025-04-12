@@ -24,7 +24,7 @@ class SimuladorReservas:
             if not asientos_disponibles:
                 with self.lock:
                     self.resultados["fallidas"] += 1
-                print(f"⚠️ Usuario {user_id} - No hay asientos disponibles")
+                print(f"Usuario {user_id} - No hay asientos disponibles")
                 return False
                 
             asiento_id, numero_asiento = random.choice(asientos_disponibles)
@@ -40,10 +40,10 @@ class SimuladorReservas:
             with self.lock:
                 if exito:
                     self.resultados["exitosas"] += 1
-                    print(f"✅ Usuario {user_id} - Reserva exitosa para asiento {numero_asiento}")
+                    print(f"Usuario {user_id} - Reserva exitosa para asiento {numero_asiento}")
                 else:
                     self.resultados["fallidas"] += 1
-                    print(f"❌ Usuario {user_id} - No pudo reservar asiento {numero_asiento}")
+                    print(f"Usuario {user_id} - No pudo reservar asiento {numero_asiento}")
             
             return exito
             
@@ -51,17 +51,17 @@ class SimuladorReservas:
             if "could not obtain lock" in str(e):
                 with self.lock:
                     self.resultados["bloqueos"] += 1
-                print(f"🔒 Usuario {user_id} - Asiento bloqueado, reintentando...")
+                print(f"Usuario {user_id} - Asiento bloqueado, reintentando...")
                 return self.simular_reserva(user_id, event_id, nivel_aislamiento)
             else:
                 with self.lock:
                     self.resultados["errores"] += 1
-                print(f"🔴 Usuario {user_id} - Error: {str(e)}")
+                print(f" Usuario {user_id} - Error: {str(e)}")
                 return False
         except Exception as e:
             with self.lock:
                 self.resultados["errores"] += 1
-            print(f"🔴 Usuario {user_id} - Error inesperado: {str(e)}")
+            print(f" Usuario {user_id} - Error inesperado: {str(e)}")
             return False
 
     def ejecutar_simulacion(self, num_usuarios, event_id, nivel_aislamiento=None):
@@ -70,7 +70,7 @@ class SimuladorReservas:
         
         inicio = time.time()
         
-        print(f"\n🚀 Iniciando simulación con {num_usuarios} usuarios...")
+        print(f"\nIniciando simulación con {num_usuarios} usuarios...")
         print(f"🔧 Nivel de aislamiento: {nivel_aislamiento or 'Por defecto'}")
         
         for i in range(num_usuarios):
@@ -87,7 +87,7 @@ class SimuladorReservas:
         tiempo_total = time.time() - inicio
         tiempo_promedio = (tiempo_total * 1000) / num_usuarios
         
-        print("\n📊 Resultados:")
+        print("\nResultados:")
         print(f"Reservas exitosas: {self.resultados['exitosas']}")
         print(f"Reservas fallidas: {self.resultados['fallidas']}")
         print(f"Errores: {self.resultados['errores']}")
@@ -112,19 +112,19 @@ NIVELES_AISLAMIENTO = {
 }
 
 def menu_principal():
-    print("\n🎭 Simulador de Reservas Concurrentes 🎭")
+    print("\nSimulador de Reservas Concurrentes")
     print("Basado en el sistema de gestión de base de datos DButils")
     
     db = DButils()
     eventos = db.get_eventos()
     
-    print("\n📅 Eventos disponibles:")
+    print("\nEventos disponibles:")
     for evento in eventos:
         print(f"{evento[0]}. {evento[1]} - {evento[2]} ({evento[3]})")
     
     event_id = int(input("\nSeleccione el ID del evento: "))
     
-    print("\n🔒 Niveles de aislamiento disponibles:")
+    print("\nNiveles de aislamiento disponibles:")
     for i, nivel in enumerate(NIVELES_AISLAMIENTO.keys(), 1):
         print(f"{i}. {nivel}")
     
@@ -139,7 +139,7 @@ def menu_principal():
     num_usuarios = int(input("\nNúmero de usuarios concurrentes (5-30): ") or "10")
     num_usuarios = max(5, min(30, num_usuarios))
     
-    print(f"\n🔧 Configuración final:")
+    print(f"\nConfiguración final:")
     print(f"Evento: {event_id}")
     print(f"Nivel de aislamiento: {nivel}")
     print(f"Usuarios concurrentes: {num_usuarios}")
@@ -157,7 +157,7 @@ def menu_principal():
     with open("resultados.csv", "a") as f:
         f.write(f"{event_id},{nivel},{num_usuarios},{resultados['reservas_exitosas']},{resultados['reservas_fallidas']},{resultados['errores']},{resultados['bloqueos']},{resultados['tiempo_promedio']:.2f}\n")
     
-    print("\n✅ Simulación completada. Resultados guardados en 'resultados_simulacion.csv'")
+    print("\nSimulación completada. Resultados guardados en 'resultados_simulacion.csv'")
 
 if __name__ == "__main__":
     menu_principal()
